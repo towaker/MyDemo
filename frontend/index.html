@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI English Speaking Coach</title>
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --accent-hover: #ff6b81;
+    --text: #eee;
+    --text-dim: #999;
+    --bubble-user: #0f3460;
+    --bubble-ai: #1a1a2e;
+    --border: #2a2a4a;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.3);
+    --green: #4caf50;
+    --orange: #ff9800;
+    --red: #f44336;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ===== Header ===== */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+}
+.header h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: linear-gradient(135deg, var(--accent), #ff9a76);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.scene-select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+}
+.scene-select:focus { border-color: var(--accent); }
+.status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.status-dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
+
+/* ===== Chat Area ===== */
+.chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scroll-behavior: smooth;
+}
+.chat-area::-webkit-scrollbar { width: 6px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.bubble {
+    position: relative;
+    max-width: 80%;
+    padding: 12px 40px 12px 16px; /* right padding for practice button */
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-break: break-word;
+    animation: fadeIn 0.3s ease;
+}
+.bubble.user {
+    align-self: flex-end;
+    background: var(--bubble-user);
+    border-bottom-right-radius: 4px;
+}
+.bubble.ai {
+    align-self: flex-start;
+    background: var(--bubble-ai);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+}
+.bubble .label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.bubble.info {
+    align-self: center;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    padding: 4px 12px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Practice Button ===== */
+.practice-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.practice-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    transform: scale(1.1);
+}
+
+/* ===== Practice Overlay ===== */
+.practice-overlay {
+    background: rgba(233,69,96,0.88);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 6px 14px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    max-width: 80%;
+    letter-spacing: 0.3px;
+    animation: fadeIn 0.3s ease;
+    pointer-events: none;
+}
+.practice-overlay.bubble-user-overlay { align-self: flex-end; }
+.practice-overlay.bubble-ai-overlay { align-self: flex-start; }
+
+/* ===== Evaluation Card ===== */
+.eval-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-top: 2px;
+    max-width: 80%;
+    animation: fadeIn 0.3s ease;
+}
+.eval-card.user-eval { align-self: flex-end; }
+.eval-card.ai-eval { align-self: flex-start; }
+
+.eval-score {
+    font-size: 2.6rem;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+.eval-score span {
+    font-size: 0.95rem;
+    font-weight: 400;
+    opacity: 0.65;
+}
+
+.eval-metrics {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.eval-metric {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.83rem;
+}
+.eval-metric > span:first-child {
+    width: 68px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+.eval-metric > span:last-child {
+    width: 32px;
+    text-align: right;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.eval-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.eval-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.eval-words {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.eval-word {
+    background: var(--bg);
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.eval-word small {
+    opacity: 0.65;
+    font-size: 0.72rem;
+}
+
+/* ===== Bottom Bar ===== */
+.bottom-bar {
+    padding: 12px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-record {
+    background: var(--accent);
+    color: #fff;
+    position: relative;
+}
+.btn-record:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-record.recording {
+    animation: recordPulse 1.5s infinite;
+}
+@keyframes recordPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.5); }
+    50% { box-shadow: 0 0 0 12px rgba(233, 69, 96, 0); }
+}
+.btn-stop {
+    background: #555;
+    color: #fff;
+}
+.btn-stop:hover:not(:disabled) { background: #777; }
+.btn-send {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn-send:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.text-row {
+    display: flex;
+    gap: 10px;
+}
+.text-input {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    outline: none;
+    resize: none;
+    min-height: 44px;
+    max-height: 80px;
+    font-family: inherit;
+}
+.text-input:focus { border-color: var(--accent); }
+.text-input::placeholder { color: var(--text-dim); }
+
+/* ===== Report Button ===== */
+.btn-report {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    font-size: 0.82rem;
+    padding: 6px 12px;
+    margin-left: 8px;
+}
+.btn-report:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* ===== Report Panel ===== */
+.report-panel {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin: 12px 0;
+    max-width: 90%;
+    align-self: center;
+    animation: fadeIn 0.4s ease;
+    box-shadow: 0 4px 24px rgba(233, 69, 96, 0.15);
+}
+.report-panel h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--accent);
+    text-align: center;
+}
+.report-panel .report-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 18px;
+}
+.report-score-big {
+    text-align: center;
+    margin: 16px 0;
+}
+.report-score-big .big-num {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.report-score-big .big-label {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+.report-section {
+    margin: 14px 0;
+}
+.report-section h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent-hover);
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+}
+.report-section p {
+    font-size: 0.88rem;
+    color: var(--text);
+    line-height: 1.5;
+}
+.report-metrics {
+    display: flex;
+    justify-content: space-around;
+    gap: 12px;
+    margin: 12px 0;
+}
+.report-metric-item {
+    text-align: center;
+    flex: 1;
+}
+.report-metric-item .metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.report-metric-item .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+.report-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+}
+.report-tag {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+.report-tag.strength {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+.report-tag.weakness {
+    background: rgba(255, 152, 0, 0.15);
+    color: var(--orange);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+.report-tag.suggestion {
+    background: rgba(233, 69, 96, 0.1);
+    color: var(--accent-hover);
+    border: 1px solid rgba(233, 69, 96, 0.2);
+}
+.report-errors {
+    margin-top: 12px;
+    font-size: 0.83rem;
+}
+.report-error-item {
+    background: var(--bg);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 6px 0;
+    border-left: 3px solid var(--orange);
+}
+.report-error-item .err-original { color: var(--red); text-decoration: line-through; margin-right: 6px; }
+.report-error-item .err-suggestion { color: var(--green); font-weight: 600; }
+.report-error-item .err-type {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-left: 8px;
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.report-close {
+    display: block;
+    margin: 16px auto 0;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 24px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.report-close:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ===== Responsive ===== */
+@media (max-width: 600px) {
+    .header { flex-direction: column; align-items: flex-start; }
+    .bubble { max-width: 90%; }
+    .controls { flex-wrap: wrap; }
+    .btn { padding: 8px 14px; font-size: 0.85rem; }
+    .eval-card { max-width: 90%; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="header-row">
+        <h1>AI English Speaking Coach</h1>
+        <span class="status-dot offline" id="statusDot" title="WebSocket Status"></span>
+    </div>
+    <div class="header-row">
+        <select class="scene-select" id="sceneSelect" title="Select a scenario">
+            <option value="">Loading...</option>
+        </select>
+        <button class="btn btn-report" id="btnReport" title="Generate session report">Report</button>
+    </div>
+</div>
+
+<!-- Chat Area -->
+<div class="chat-area" id="chatArea">
+    <div class="bubble info">Welcome! Select a scenario and start speaking. ✨</div>
+</div>
+
+<!-- Bottom Bar -->
+<div class="bottom-bar">
+    <div class="controls">
+        <button class="btn btn-record" id="btnRecord" title="Start Recording">Start Recording</button>
+        <button class="btn btn-stop" id="btnStop" disabled title="Stop Recording">Stop</button>
+    </div>
+    <div class="text-row">
+        <input type="text" class="text-input" id="textInput" placeholder="Type your message (fallback mode)...">
+        <button class="btn btn-send" id="btnSend" title="Send text">Send</button>
+    </div>
+</div>
+
+<script>
+// ===== Configuration =====
+const WS_URL = `ws://${location.host}/ws`;
+const API_BASE = '';
+
+// ===== State =====
+let ws = null;
+let reconnectTimer = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY = 10000;
+
+// Streaming state
+let currentAiBubble = null;
+let audioQueue = [];
+let isPlayingQueue = false;
+
+// Promise resolvers for async WS responses (practice flow)
+let ttsResolve = null;
+let practiceResolve = null;
+
+// ===== DOM Refs =====
+const statusDot = document.getElementById('statusDot');
+const sceneSelect = document.getElementById('sceneSelect');
+const chatArea = document.getElementById('chatArea');
+const btnRecord = document.getElementById('btnRecord');
+const btnStop = document.getElementById('btnStop');
+const textInput = document.getElementById('textInput');
+const btnSend = document.getElementById('btnSend');
+const btnReport = document.getElementById('btnReport');
+
+// ===== Utilities =====
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ===== WebSocket =====
+function connectWS() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+    setStatus('connecting');
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+        setStatus('online');
+        reconnectAttempts = 0;
+        console.log('WebSocket connected');
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            handleMessage(msg);
+        } catch (e) {
+            console.error('Failed to parse WS message:', e);
+        }
+    };
+
+    ws.onclose = () => {
+        setStatus('offline');
+        console.log('WebSocket disconnected, scheduling reconnect...');
+        scheduleReconnect();
+    };
+
+    ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+    };
+}
+
+function scheduleReconnect() {
+    if (reconnectTimer) return;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+    reconnectAttempts++;
+    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectWS();
+    }, delay);
+}
+
+function setStatus(state) {
+    statusDot.className = 'status-dot ' + state;
+    statusDot.title = 'WebSocket: ' + state;
+}
+
+function handleMessage(msg) {
+    switch (msg.type) {
+        case 'stream_start': {
+            const { user_text } = msg;
+            if (user_text) addBubble('user', user_text);
+            // Clear any previous streaming state
+            audioQueue = [];
+            isPlayingQueue = false;
+            stopActiveAudio();
+            // Create placeholder AI bubble
+            currentAiBubble = addBubble('ai', '...');
+            break;
+        }
+        case 'text_chunk': {
+            const { text } = msg;
+            if (currentAiBubble) {
+                const textEl = currentAiBubble.querySelector('.bubble-text');
+                if (textEl) {
+                    // Replace placeholder on first real chunk
+                    if (textEl.textContent === '...') {
+                        textEl.textContent = text;
+                    } else {
+                        textEl.textContent += text;
+                    }
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                }
+            }
+            break;
+        }
+        case 'audio_chunk': {
+            const { audio } = msg;
+            if (audio) {
+                audioQueue.push(audio);
+                if (!isPlayingQueue) playNextInQueue();
+            }
+            break;
+        }
+        case 'stream_end': {
+            const { ai_text } = msg;
+            if (currentAiBubble) {
+                const textEl = currentAiBubble.querySelector('.bubble-text');
+                if (textEl && ai_text) {
+                    textEl.textContent = ai_text;
+                }
+                // Remove audio button if no final audio
+                const audioBtn = currentAiBubble.querySelector('.bubble-audio');
+                if (audioBtn && !ai_text) {
+                    audioBtn.style.display = 'none';
+                }
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+            currentAiBubble = null;
+            break;
+        }
+        case 'stream_cancelled': {
+            // Interrupted — remove placeholder if empty
+            if (currentAiBubble) {
+                const textEl = currentAiBubble.querySelector('.bubble-text');
+                if (textEl && textEl.textContent === '...') {
+                    currentAiBubble.remove();
+                }
+                currentAiBubble = null;
+            }
+            audioQueue = [];
+            isPlayingQueue = false;
+            stopActiveAudio();
+            break;
+        }
+        case 'stream_error': {
+            const message = msg.message || '处理出错，请重试';
+            // Remove placeholder AI bubble
+            if (currentAiBubble) {
+                const textEl = currentAiBubble.querySelector('.bubble-text');
+                if (textEl && textEl.textContent === '...') {
+                    currentAiBubble.remove();
+                } else if (textEl) {
+                    // Keep partial text but mark error
+                    textEl.textContent += '\n\n[错误] ' + message;
+                }
+                currentAiBubble = null;
+            }
+            audioQueue = [];
+            isPlayingQueue = false;
+            stopActiveAudio();
+            // Show error bubble
+            addBubble('ai', '[错误] ' + message);
+            break;
+        }
+        case 'reply': {
+            const { user_text, ai_text, ai_audio } = msg;
+            if (user_text) addBubble('user', user_text);
+            if (ai_text) addBubble('ai', ai_text, { audio: ai_audio || '' });
+            if (ai_audio) playAudio(ai_audio);
+            break;
+        }
+        case 'scene_switched': {
+            if (msg.status === 'ok') {
+                addBubble('info', `Switched to: ${msg.scene}`);
+            } else {
+                addBubble('info', `Scene switch failed: ${msg.message}`);
+            }
+            break;
+        }
+        case 'error': {
+            addBubble('info', `Error: ${msg.message}`);
+            break;
+        }
+        case 'tts_audio': {
+            // Resolve pending TTS promise (practice flow)
+            if (typeof ttsResolve === 'function') {
+                ttsResolve(msg.audio);
+                ttsResolve = null;
+            }
+            break;
+        }
+        case 'pronunciation_result': {
+            // Resolve pending evaluation promise; also render card
+            if (typeof practiceResolve === 'function') {
+                practiceResolve(msg);
+                practiceResolve = null;
+            }
+            renderEvalCard(msg);
+            break;
+        }
+        case 'report_result': {
+            renderReport(msg);
+            break;
+        }
+        case 'tracker_reset': {
+            // remove existing report panel if any
+            const prevReport = document.getElementById('reportPanel');
+            if (prevReport) prevReport.remove();
+            break;
+        }
+        default:
+            console.log('Unknown message type:', msg.type);
+    }
+}
+
+// ===== Chat UI =====
+function addBubble(role, text, metadata = {}) {
+    const div = document.createElement('div');
+    div.className = 'bubble ' + role;
+
+    // Store metadata as data attributes for practice flow
+    div.dataset.text = text || '';
+    if (metadata.audio) div.dataset.audio = metadata.audio;
+
+    const label = role === 'user' ? 'You' : (role === 'ai' ? 'Coach' : '');
+
+    if (role === 'user' || role === 'ai') {
+        div.innerHTML =
+            (label ? `<div class="label">${label}</div>` : '') +
+            `<span class="bubble-text">${escapeHtml(text)}</span>` +
+            `<button class="practice-btn" title="Practice pronunciation">&#127908;</button>`;
+
+        // Bind practice button
+        div.querySelector('.practice-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            practiceFlow(div);
+        });
+    } else {
+        // Info bubble: no practice button
+        div.innerHTML = (label ? `<div class="label">${label}</div>` : '') + escapeHtml(text);
+    }
+
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return div;
+}
+
+// ===== Audio Playback =====
+let activeAudio = null;
+
+function stopActiveAudio() {
+    if (activeAudio) {
+        activeAudio.pause();
+        activeAudio.src = '';
+        activeAudio = null;
+    }
+}
+
+function playAudio(base64Data) {
+    if (!base64Data) return;
+    const binary = atob(base64Data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    stopActiveAudio();
+    const audio = new Audio(url);
+    activeAudio = audio;
+    audio.play().catch(e => console.error('Audio playback failed:', e));
+    audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (activeAudio === audio) activeAudio = null;
+    };
+}
+
+/** Play next audio in the streaming queue sequentially. */
+function playNextInQueue() {
+    if (audioQueue.length === 0) {
+        isPlayingQueue = false;
+        return;
+    }
+    isPlayingQueue = true;
+    const b64 = audioQueue.shift();
+    if (!b64) {
+        playNextInQueue();
+        return;
+    }
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    stopActiveAudio();
+    const audio = new Audio(url);
+    activeAudio = audio;
+    audio.play().catch(e => { console.error('Queue playback failed:', e); playNextInQueue(); });
+    audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (activeAudio === audio) activeAudio = null;
+        playNextInQueue();
+    };
+}
+
+/** Play audio and return a promise that resolves when playback ends. */
+function playAudioPromise(base64Data) {
+    return new Promise((resolve, reject) => {
+        if (!base64Data) return reject(new Error('No audio data'));
+        const binary = atob(base64Data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+        audio.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+        audio.play().catch(reject);
+    });
+}
+
+// ===== Recording (main chat) =====
+async function startRecording() {
+    // 打断正在播放的 AI 音频
+    stopActiveAudio();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'barge_in' }));
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : 'audio/webm';
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(audioChunks, { type: mimeType });
+            audioChunks = [];
+            await sendAudio(blob);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        updateRecordUI();
+    } catch (err) {
+        console.error('Failed to start recording:', err);
+        addBubble('info', 'Microphone access denied or unavailable. Use text input instead.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    isRecording = false;
+    updateRecordUI();
+}
+
+function updateRecordUI() {
+    if (isRecording) {
+        btnRecord.textContent = 'Recording...';
+        btnRecord.classList.add('recording');
+        btnStop.disabled = false;
+        btnRecord.disabled = true;
+    } else {
+        btnRecord.textContent = 'Start Recording';
+        btnRecord.classList.remove('recording');
+        btnStop.disabled = true;
+        btnRecord.disabled = false;
+    }
+}
+
+async function sendAudio(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'audio', data: base64 }));
+                resolve();
+            } else {
+                addBubble('info', 'WebSocket not connected. Cannot send audio.');
+                reject(new Error('WS not connected'));
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// ===== Practice Recording (independent, 5s fixed duration) =====
+async function recordPracticeAudio(durationMs = 5000) {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+
+    return new Promise((resolve, reject) => {
+        const recorder = new MediaRecorder(stream, { mimeType });
+        const chunks = [];
+
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(chunks, { type: mimeType });
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        };
+
+        recorder.onerror = (e) => {
+            stream.getTracks().forEach(t => t.stop());
+            reject(e);
+        };
+
+        recorder.start();
+        setTimeout(() => {
+            if (recorder.state === 'recording') recorder.stop();
+        }, durationMs);
+    });
+}
+
+// ===== Practice Flow =====
+async function practiceFlow(bubbleDiv) {
+    const referenceText = bubbleDiv.dataset.text;
+    if (!referenceText) return;
+
+    // Create overlay for status feedback, placed above the bubble
+    const overlay = document.createElement('div');
+    overlay.className = 'practice-overlay';
+    if (bubbleDiv.classList.contains('user')) {
+        overlay.classList.add('bubble-user-overlay');
+    } else {
+        overlay.classList.add('bubble-ai-overlay');
+    }
+    bubbleDiv.insertAdjacentElement('beforebegin', overlay);
+
+    try {
+        // --- Step 1: Play demo audio ---
+        overlay.textContent = 'Listen to the pronunciation...';
+
+        if (bubbleDiv.classList.contains('ai') && bubbleDiv.dataset.audio) {
+            // AI message: use cached audio
+            await playAudioPromise(bubbleDiv.dataset.audio);
+        } else {
+            // User message or AI without cached audio: request TTS
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                throw new Error('WebSocket not connected');
+            }
+            ws.send(JSON.stringify({ type: 'synthesize_text', text: referenceText }));
+            const audioBase64 = await new Promise((resolve, reject) => {
+                ttsResolve = resolve;
+                setTimeout(() => {
+                    ttsResolve = null;
+                    reject(new Error('TTS timeout'));
+                }, 15000);
+            });
+            await playAudioPromise(audioBase64);
+        }
+
+        // --- Step 2: Countdown ---
+        for (let i = 3; i >= 1; i--) {
+            overlay.textContent = `${i}...`;
+            await sleep(1000);
+        }
+
+        // --- Step 3: Record ---
+        overlay.textContent = 'Recording... Speak now!';
+        const audioBase64 = await recordPracticeAudio(5000);
+
+        // --- Step 4: Evaluate ---
+        overlay.textContent = 'Evaluating...';
+        ws.send(JSON.stringify({
+            type: 'practice_pronounce',
+            reference_text: referenceText,
+            audio: audioBase64,
+        }));
+
+        const result = await new Promise((resolve, reject) => {
+            practiceResolve = resolve;
+            setTimeout(() => {
+                practiceResolve = null;
+                reject(new Error('Evaluation timeout'));
+            }, 20000);
+        });
+
+        // --- Step 5: Done ---
+        overlay.remove();
+        // renderEvalCard is called via handleMessage → pronunciation_result
+        // but we call it here as well in case the card needs the bubble ref
+        renderEvalCardForBubble(bubbleDiv, result);
+
+    } catch (err) {
+        console.error('Practice flow error:', err);
+        overlay.textContent = err.message || 'Practice failed';
+        overlay.style.background = 'rgba(244,67,54,0.85)';
+        setTimeout(() => overlay.remove(), 2500);
+    }
+}
+
+// ===== Evaluation Card Rendering =====
+function scoreColor(score) {
+    if (score >= 80) return 'var(--green)';
+    if (score >= 60) return 'var(--orange)';
+    return 'var(--red)';
+}
+
+function buildEvalCardHTML(result) {
+    const { overall_score, accuracy, fluency, words } = result;
+    const color = scoreColor(overall_score);
+
+    let wordsHTML = '';
+    if (words && words.length) {
+        const items = words.map(w => {
+            const wc = scoreColor(w.score);
+            return `<span class="eval-word" style="color:${wc}">${escapeHtml(w.word)}<small>${w.score}</small></span>`;
+        }).join('');
+        wordsHTML = `<div class="eval-words">${items}</div>`;
+    }
+
+    return `
+        <div class="eval-score" style="color:${color}">${overall_score}<span>/100</span></div>
+        <div class="eval-metrics">
+            <div class="eval-metric">
+                <span>Accuracy</span>
+                <div class="eval-bar"><div class="eval-bar-fill" style="width:${accuracy}%;background:${scoreColor(accuracy)}"></div></div>
+                <span>${accuracy}</span>
+            </div>
+            <div class="eval-metric">
+                <span>Fluency</span>
+                <div class="eval-bar"><div class="eval-bar-fill" style="width:${fluency}%;background:${scoreColor(fluency)}"></div></div>
+                <span>${fluency}</span>
+            </div>
+        </div>
+        ${wordsHTML}
+    `;
+}
+
+/** Render eval card below the given bubble (called from practiceFlow). */
+function renderEvalCardForBubble(bubbleDiv, result) {
+    // Remove any existing eval card right after this bubble
+    const next = bubbleDiv.nextElementSibling;
+    if (next && next.classList.contains('eval-card')) {
+        next.remove();
+    }
+
+    const card = document.createElement('div');
+    card.className = 'eval-card';
+    if (bubbleDiv.classList.contains('user')) {
+        card.classList.add('user-eval');
+    } else if (bubbleDiv.classList.contains('ai')) {
+        card.classList.add('ai-eval');
+    }
+    card.innerHTML = buildEvalCardHTML(result);
+    bubbleDiv.insertAdjacentElement('afterend', card);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+/** Render eval card by matching reference_text (called from handleMessage fallback). */
+function renderEvalCard(result) {
+    const refText = result.reference_text;
+    if (!refText) return;
+
+    // Find the last bubble with matching text
+    const bubbles = chatArea.querySelectorAll('.bubble.user, .bubble.ai');
+    let target = null;
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+        if (bubbles[i].dataset.text === refText) {
+            target = bubbles[i];
+            break;
+        }
+    }
+    if (!target) return; // no matching bubble found
+    renderEvalCardForBubble(target, result);
+}
+
+// ===== Text Input =====
+function sendText() {
+    const text = textInput.value.trim();
+    if (!text) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        addBubble('info', 'WebSocket not connected. Cannot send message.');
+        return;
+    }
+    ws.send(JSON.stringify({ type: 'text', content: text }));
+    textInput.value = '';
+}
+
+// ===== Scene Management =====
+async function loadScenes() {
+    try {
+        const resp = await fetch(API_BASE + '/api/scenes');
+        const data = await resp.json();
+        sceneSelect.innerHTML = '';
+        (data.scenes || []).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            sceneSelect.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Failed to load scenes:', e);
+        sceneSelect.innerHTML = '<option value="">Failed to load</option>';
+    }
+}
+
+async function switchScene(name) {
+    try {
+        await fetch(`${API_BASE}/api/scenes/${name}`, { method: 'POST' });
+    } catch (e) {
+        console.error('Failed to switch scene:', e);
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'switch_scene', scene: name }));
+    }
+}
+
+// ===== Event Listeners =====
+btnRecord.addEventListener('click', () => {
+    if (isRecording) return;
+    startRecording();
+});
+
+btnStop.addEventListener('click', () => {
+    if (!isRecording) return;
+    stopRecording();
+});
+
+btnSend.addEventListener('click', sendText);
+textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendText();
+    }
+});
+
+sceneSelect.addEventListener('change', () => {
+    const name = sceneSelect.value;
+    if (name) switchScene(name);
+});
+
+// ===== Report =====
+function requestReport() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        addBubble('info', 'WebSocket not connected. Cannot generate report.');
+        return;
+    }
+    ws.send(JSON.stringify({ type: 'generate_report' }));
+    addBubble('info', 'Generating report...');
+}
+
+function renderReport(data) {
+    // Remove existing report panel
+    const prevReport = document.getElementById('reportPanel');
+    if (prevReport) prevReport.remove();
+
+    const panel = document.createElement('div');
+    panel.className = 'report-panel';
+    panel.id = 'reportPanel';
+
+    // Title area
+    const sceneName = (data.scene_name || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const durationMin = Math.round((data.duration_seconds || 0) / 60);
+    const os = data.overall_score || 0;
+    const sc = scoreColor(os);
+
+    let html = `
+        <h2>Session Report</h2>
+        <div class="report-subtitle">${sceneName}  |  ${data.dialogue_count || 0} turns  |  ${durationMin} min  |  ${data.generated_by === 'ai' ? 'AI Enhanced' : 'Local Stats'}</div>
+        <div class="report-score-big">
+            <div class="big-num" style="color:${sc}">${os}</div>
+            <div class="big-label">Overall Score</div>
+        </div>
+    `;
+
+    // Metrics row
+    const grammar = data.grammar || {};
+    const pronunciation = data.pronunciation || {};
+    html += `
+        <div class="report-metrics">
+            <div class="report-metric-item">
+                <div class="metric-value" style="color:${scoreColor(grammar.total_errors === 0 ? 100 : Math.max(20, 100 - grammar.total_errors * 5))}">${grammar.total_errors ?? 0}</div>
+                <div class="metric-label">Grammar Errors</div>
+            </div>
+            <div class="report-metric-item">
+                <div class="metric-value" style="color:${scoreColor(pronunciation.avg_score || 0)}">${pronunciation.avg_score ?? '-'}</div>
+                <div class="metric-label">Pronunciation Avg</div>
+            </div>
+            <div class="report-metric-item">
+                <div class="metric-value" style="color:${scoreColor(pronunciation.avg_fluency || 0)}">${pronunciation.avg_fluency ?? '-'}</div>
+                <div class="metric-label">Fluency</div>
+            </div>
+            <div class="report-metric-item">
+                <div class="metric-value" style="color:${scoreColor(pronunciation.avg_accuracy || 0)}">${pronunciation.avg_accuracy ?? '-'}</div>
+                <div class="metric-label">Accuracy</div>
+            </div>
+        </div>
+    `;
+
+    // Summary
+    if (data.summary) {
+        html += `<div class="report-section"><h3>Summary</h3><p>${escapeHtml(data.summary)}</p></div>`;
+    }
+
+    // Strengths & Weaknesses
+    const strengths = data.strengths || [];
+    const weaknesses = data.weaknesses || [];
+    if (strengths.length || weaknesses.length) {
+        html += '<div class="report-section"><h3>Assessment</h3>';
+        if (strengths.length) {
+            html += '<div class="report-tags">' + strengths.map(s => `<span class="report-tag strength">${escapeHtml(s)}</span>`).join('') + '</div>';
+        }
+        if (weaknesses.length) {
+            html += '<div class="report-tags">' + weaknesses.map(w => `<span class="report-tag weakness">${escapeHtml(w)}</span>`).join('') + '</div>';
+        }
+        html += '</div>';
+    }
+
+    // Grammar detail
+    if (grammar.summary) {
+        html += `<div class="report-section"><h3>Grammar</h3><p>${escapeHtml(grammar.summary)}</p></div>`;
+    }
+
+    // Pronunciation detail
+    if (pronunciation.summary) {
+        html += `<div class="report-section"><h3>Pronunciation</h3><p>${escapeHtml(pronunciation.summary)}</p></div>`;
+    }
+
+    // Vocabulary tip
+    if (data.vocabulary_tip) {
+        html += `<div class="report-section"><h3>Vocabulary Tip</h3><p>${escapeHtml(data.vocabulary_tip)}</p></div>`;
+    }
+
+    // Suggestions
+    const suggestions = data.practice_suggestions || [];
+    if (suggestions.length) {
+        html += '<div class="report-section"><h3>Practice Suggestions</h3><div class="report-tags">' +
+            suggestions.map(s => `<span class="report-tag suggestion">${escapeHtml(s)}</span>`).join('') +
+            '</div></div>';
+    }
+
+    // Detailed errors
+    const detailed = data.detailed_errors || [];
+    if (detailed.length) {
+        html += '<div class="report-section"><h3>Error Details</h3><div class="report-errors">';
+        for (const rec of detailed) {
+            if (rec.errors && rec.errors.length) {
+                for (const err of rec.errors) {
+                    html += `<div class="report-error-item">
+                        <span class="err-original">${escapeHtml(err.original || '')}</span>
+                        <span class="err-suggestion">&rarr; ${escapeHtml(err.suggestion || '')}</span>
+                        <span class="err-type">${escapeHtml(err.type || '')}</span>
+                    </div>`;
+                }
+            }
+        }
+        html += '</div></div>';
+    }
+
+    // Close button
+    html += '<button class="report-close" onclick="document.getElementById(\'reportPanel\').remove()">Close Report</button>';
+
+    panel.innerHTML = html;
+    chatArea.appendChild(panel);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ===== Init =====
+loadScenes();
+connectWS();
+
+// Report button
+btnReport.addEventListener('click', () => {
+    requestReport();
+});
+</script>
+</body>
+</html>
