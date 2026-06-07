@@ -15,6 +15,4 @@ system_prompt: |
 
   The user is an English learner practicing doctor visit conversations.
 
-first_message: |
-  Hello, I'm Dr. Chen. Please have a seat. What seems to be the problem today?
-（内容由AI生成，仅供参考）
+first_message: "Hello, I'm Dr. Chen. Please have a seat. What seems to be the problem today?"

@@ -15,6 +15,4 @@ system_prompt: |
 
   The user is an English learner practicing hotel check-in conversations.
 
-first_message: |
-  Good afternoon! Welcome to Grand Horizon Hotel. Do you have a reservation with us today?
-（内容由AI生成，仅供参考）
+first_message: "Good afternoon! Welcome to Grand Horizon Hotel. Do you have a reservation with us today?"
