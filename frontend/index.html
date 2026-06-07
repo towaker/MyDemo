@@ -24,6 +24,23 @@
     --orange: #ff9800;
     --red: #f44336;
 }
+[data-theme="light"] {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface2: #e8e8e8;
+    --accent: #e94560;
+    --accent-hover: #ff6b81;
+    --text: #1a1a2e;
+    --text-dim: #777;
+    --bubble-user: #e94560;
+    --bubble-ai: #f0f0f0;
+    --border: #ddd;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.1);
+    --green: #4caf50;
+    --orange: #ff9800;
+    --red: #f44336;
+}
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
@@ -44,6 +61,7 @@ body {
     border-bottom: 1px solid var(--border);
     gap: 12px;
     flex-shrink: 0;
+    position: relative;
 }
 .header h1 {
     font-size: 1.2rem;
@@ -78,6 +96,110 @@ body {
 .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
 .status-dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ===== Settings Button ===== */
+.btn-settings {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    font-size: 1rem;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+}
+.btn-settings:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* ===== Settings Panel ===== */
+.settings-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 20px;
+    margin-top: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 220px;
+    box-shadow: var(--shadow);
+    z-index: 1000;
+}
+.settings-panel.visible {
+    display: block;
+}
+.settings-panel h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+.settings-section {
+    margin-bottom: 12px;
+}
+.settings-section label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.settings-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+}
+.theme-options, .lang-options {
+    display: flex;
+    gap: 8px;
+}
+.theme-btn, .lang-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-weight: 500;
+    background: var(--surface2);
+    color: var(--text);
+}
+.theme-btn:hover, .lang-btn:hover {
+    opacity: 0.85;
+}
+.theme-btn.active, .lang-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.theme-btn[data-theme-value="dark"] {
+    background: #1a1a2e;
+    color: #eee;
+}
+.theme-btn[data-theme-value="light"] {
+    background: #f5f5f5;
+    color: #1a1a2e;
+    border: 2px solid #ddd;
+}
+.theme-btn[data-theme-value="light"].active {
+    border-color: var(--accent);
+}
 
 /* ===== Chat Area ===== */
 .chat-area {
@@ -106,11 +228,13 @@ body {
 .bubble.user {
     align-self: flex-end;
     background: var(--bubble-user);
+    color: #fff;
     border-bottom-right-radius: 4px;
 }
 .bubble.ai {
     align-self: flex-start;
     background: var(--bubble-ai);
+    color: var(--text);
     border: 1px solid var(--border);
     border-bottom-left-radius: 4px;
 }
@@ -339,7 +463,6 @@ body {
     border: 1px solid var(--accent);
     font-size: 0.82rem;
     padding: 6px 12px;
-    margin-left: 8px;
 }
 .btn-report:hover {
     background: var(--accent);
@@ -488,6 +611,7 @@ body {
     .controls { flex-wrap: wrap; }
     .btn { padding: 8px 14px; font-size: 0.85rem; }
     .eval-card { max-width: 90%; }
+    .settings-panel { right: 4px; min-width: 200px; }
 }
 </style>
 </head>
@@ -496,35 +620,284 @@ body {
 <!-- Header -->
 <div class="header">
     <div class="header-row">
-        <h1>AI English Speaking Coach</h1>
+        <h1 data-i18n="title">AI English Speaking Coach</h1>
         <span class="status-dot offline" id="statusDot" title="WebSocket Status"></span>
     </div>
     <div class="header-row">
         <select class="scene-select" id="sceneSelect" title="Select a scenario">
             <option value="">Loading...</option>
         </select>
-        <button class="btn btn-report" id="btnReport" title="Generate session report">Report</button>
+        <button class="btn btn-report" id="btnReport" data-i18n="report" title="Generate session report">Report</button>
+        <button class="btn-settings" id="settingsBtn" title="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
     </div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="settingsPanel">
+    <h3 data-i18n="settings">Settings</h3>
+    <div class="settings-section">
+        <label data-i18n="theme">Theme</label>
+        <div class="theme-options">
+            <button class="theme-btn active" data-theme-value="dark" data-i18n="dark">Dark</button>
+            <button class="theme-btn" data-theme-value="light" data-i18n="light">Light</button>
+        </div>
+    </div>
+    <hr class="settings-divider">
+    <div class="settings-section">
+        <label data-i18n="language">Language</label>
+        <div class="lang-options">
+            <button class="lang-btn active" data-lang-value="en">English</button>
+            <button class="lang-btn" data-lang-value="zh">简体中文</button>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Chat Area -->
 <div class="chat-area" id="chatArea">
-    <div class="bubble info">Welcome! Select a scenario and start speaking. ✨</div>
+    <div class="bubble info" data-i18n="welcome">Welcome! Select a scenario and start speaking.</div>
 </div>
 
 <!-- Bottom Bar -->
 <div class="bottom-bar">
     <div class="controls">
-        <button class="btn btn-record" id="btnRecord" title="Start Recording">Start Recording</button>
-        <button class="btn btn-stop" id="btnStop" disabled title="Stop Recording">Stop</button>
+        <button class="btn btn-record" id="btnRecord" data-i18n="startRecording" title="Start Recording">Start Recording</button>
+        <button class="btn btn-stop" id="btnStop" data-i18n="stopRecording" disabled title="Stop Recording">Stop</button>
     </div>
     <div class="text-row">
-        <input type="text" class="text-input" id="textInput" placeholder="Type your message (fallback mode)...">
-        <button class="btn btn-send" id="btnSend" title="Send text">Send</button>
+        <input type="text" class="text-input" id="textInput" data-i18n-placeholder="placeholder" placeholder="Type a message...">
+        <button class="btn btn-send" id="btnSend" data-i18n="send" title="Send text">Send</button>
     </div>
 </div>
 
 <script>
+// ===== I18N =====
+const I18N = {
+    en: {
+        title: 'AI English Speaking Coach',
+        settings: 'Settings',
+        theme: 'Theme',
+        dark: 'Dark',
+        light: 'Light',
+        language: 'Language',
+        scene: 'Scene',
+        report: 'Report',
+        placeholder: 'Type a message...',
+        send: 'Send',
+        startRecording: 'Start Recording',
+        stopRecording: 'Stop',
+        listening: 'Listening...',
+        processing: 'Processing...',
+        connected: 'Connected',
+        disconnected: 'Disconnected',
+        connecting: 'Connecting...',
+        free_talk: 'Free Talk',
+        interview: 'Interview',
+        meeting: 'Meeting',
+        ordering: 'Ordering',
+        travel: 'Travel',
+        check_in: 'Hotel Check-in',
+        doctor: 'Doctor Visit',
+        shopping: 'Shopping',
+        directions: 'Directions',
+        loadingScenes: 'Loading...',
+        noScenes: 'No scenes available',
+        reportTitle: 'Practice Report',
+        close: 'Close',
+        score: 'Score',
+        fluency: 'Fluency',
+        grammar: 'Grammar',
+        vocabulary: 'Vocabulary',
+        accuracy: 'Accuracy',
+        overallScore: 'Overall Score',
+        grammarErrors: 'Grammar Errors',
+        pronunciationAvg: 'Pronunciation Avg',
+        summary: 'Summary',
+        assessment: 'Assessment',
+        pronunciation: 'Pronunciation',
+        vocabularyTip: 'Vocabulary Tip',
+        practiceSuggestions: 'Practice Suggestions',
+        errorDetails: 'Error Details',
+        closeReport: 'Close Report',
+        welcome: 'Welcome! Select a scenario and start speaking.',
+        switchedTo: 'Switched to',
+        sceneSwitchFailed: 'Scene switch failed',
+        micDenied: 'Microphone access denied or unavailable. Use text input instead.',
+        wsNotConnected: 'WebSocket not connected. Cannot send message.',
+        wsNotConnectedReport: 'WebSocket not connected. Cannot generate report.',
+        generatingReport: 'Generating report...',
+        failedToLoad: 'Failed to load',
+        listenPron: 'Listen to the pronunciation...',
+        recordingSpeak: 'Recording... Speak now!',
+        evaluating: 'Evaluating...',
+        practiceFailed: 'Practice failed',
+        practiceTimeout: 'Evaluation timeout',
+        ttsTimeout: 'TTS timeout',
+        wsNotConnectedPractice: 'WebSocket not connected',
+        processingError: 'Processing error, please retry',
+        recordingLabel: 'Recording...',
+        coach: 'Coach',
+        you: 'You',
+        aiEnhanced: 'AI Enhanced',
+        localStats: 'Local Stats',
+        turns: 'turns',
+        min: 'min',
+    },
+    zh: {
+        title: 'AI 英语口语陪练',
+        settings: '设置',
+        theme: '主题',
+        dark: '深色',
+        light: '白色',
+        language: '语言',
+        scene: '场景',
+        report: '报告',
+        placeholder: '输入消息...',
+        send: '发送',
+        startRecording: '开始录音',
+        stopRecording: '停止',
+        listening: '正在听...',
+        processing: '处理中...',
+        connected: '已连接',
+        disconnected: '未连接',
+        connecting: '连接中...',
+        free_talk: '自由对话',
+        interview: '面试',
+        meeting: '会议',
+        ordering: '点餐',
+        travel: '旅行',
+        check_in: '酒店入住',
+        doctor: '看病',
+        shopping: '购物',
+        directions: '问路',
+        loadingScenes: '加载中...',
+        noScenes: '暂无可用场景',
+        reportTitle: '课后报告',
+        close: '关闭',
+        score: '评分',
+        fluency: '流利度',
+        grammar: '语法',
+        vocabulary: '词汇',
+        accuracy: '准确度',
+        overallScore: '综合评分',
+        grammarErrors: '语法错误',
+        pronunciationAvg: '发音均分',
+        summary: '总结',
+        assessment: '评估',
+        pronunciation: '发音',
+        vocabularyTip: '词汇建议',
+        practiceSuggestions: '练习建议',
+        errorDetails: '错误详情',
+        closeReport: '关闭报告',
+        welcome: '欢迎！选择一个场景开始练习吧。',
+        switchedTo: '已切换到',
+        sceneSwitchFailed: '场景切换失败',
+        micDenied: '麦克风权限被拒绝或不可用，请使用文字输入。',
+        wsNotConnected: 'WebSocket 未连接，无法发送消息。',
+        wsNotConnectedReport: 'WebSocket 未连接，无法生成报告。',
+        generatingReport: '正在生成报告...',
+        failedToLoad: '加载失败',
+        listenPron: '请听示范发音...',
+        recordingSpeak: '录音中... 请开始朗读！',
+        evaluating: '评分中...',
+        practiceFailed: '练习失败',
+        practiceTimeout: '评分超时',
+        ttsTimeout: '语音合成超时',
+        wsNotConnectedPractice: 'WebSocket 未连接',
+        processingError: '处理出错，请重试',
+        recordingLabel: '录音中...',
+        coach: '教练',
+        you: '你',
+        aiEnhanced: 'AI 增强',
+        localStats: '本地统计',
+        turns: '轮',
+        min: '分钟',
+    }
+};
+
+let currentLang = 'en';
+
+function t(key) {
+    return (I18N[currentLang] && I18N[currentLang][key]) || (I18N['en'][key] || key);
+}
+
+function applyLanguage(lang) {
+    currentLang = lang;
+    // Update document title
+    document.title = t('title');
+    // Update all data-i18n elements
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key) el.textContent = t(key);
+    });
+    // Update all data-i18n-placeholder elements
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key) el.placeholder = t(key);
+    });
+    // Update scene select options
+    refreshSceneOptions();
+    // Update status dot title
+    updateStatusTitle();
+    // Save to localStorage
+    localStorage.setItem('ai-coach-lang', lang);
+}
+
+function refreshSceneOptions() {
+    const sel = document.getElementById('sceneSelect');
+    // Preserve selected value
+    const currentVal = sel.value;
+    const options = sel.querySelectorAll('option');
+    options.forEach(opt => {
+        const sceneKey = opt.getAttribute('data-scene-key');
+        if (sceneKey && I18N[currentLang] && I18N[currentLang][sceneKey]) {
+            opt.textContent = I18N[currentLang][sceneKey];
+        }
+    });
+    // Restore "Loading..." / "Failed to load" / "No scenes" placeholders
+    const firstOpt = sel.querySelector('option[value=""]');
+    if (firstOpt) {
+        const placeholderKey = firstOpt.getAttribute('data-scene-key');
+        if (placeholderKey === 'loadingScenes') firstOpt.textContent = t('loadingScenes');
+        else if (placeholderKey === 'noScenes') firstOpt.textContent = t('noScenes');
+        else if (placeholderKey === 'failedToLoad') firstOpt.textContent = t('failedToLoad');
+    }
+    sel.value = currentVal;
+}
+
+function updateStatusTitle() {
+    const dot = document.getElementById('statusDot');
+    if (!dot) return;
+    if (dot.classList.contains('online')) dot.title = 'WebSocket: ' + t('connected');
+    else if (dot.classList.contains('offline')) dot.title = 'WebSocket: ' + t('disconnected');
+    else if (dot.classList.contains('connecting')) dot.title = 'WebSocket: ' + t('connecting');
+}
+
+// ===== Theme Management =====
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    // Update theme button active states
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        const val = btn.getAttribute('data-theme-value');
+        btn.classList.toggle('active', val === theme);
+    });
+    localStorage.setItem('ai-coach-theme', theme);
+}
+
+// ===== Settings Panel =====
+function toggleSettingsPanel() {
+    const panel = document.getElementById('settingsPanel');
+    panel.classList.toggle('visible');
+}
+
+function closeSettingsPanel() {
+    document.getElementById('settingsPanel').classList.remove('visible');
+}
+
 // ===== Configuration =====
 const WS_URL = `ws://${location.host}/ws`;
 const API_BASE = '';
@@ -556,6 +929,8 @@ const btnStop = document.getElementById('btnStop');
 const textInput = document.getElementById('textInput');
 const btnSend = document.getElementById('btnSend');
 const btnReport = document.getElementById('btnReport');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
 
 // ===== Utilities =====
 function sleep(ms) {
@@ -614,7 +989,7 @@ function scheduleReconnect() {
 
 function setStatus(state) {
     statusDot.className = 'status-dot ' + state;
-    statusDot.title = 'WebSocket: ' + state;
+    updateStatusTitle();
 }
 
 function handleMessage(msg) {
@@ -635,7 +1010,6 @@ function handleMessage(msg) {
             if (currentAiBubble) {
                 const textEl = currentAiBubble.querySelector('.bubble-text');
                 if (textEl) {
-                    // Replace placeholder on first real chunk
                     if (textEl.textContent === '...') {
                         textEl.textContent = text;
                     } else {
@@ -661,7 +1035,6 @@ function handleMessage(msg) {
                 if (textEl && ai_text) {
                     textEl.textContent = ai_text;
                 }
-                // Remove audio button if no final audio
                 const audioBtn = currentAiBubble.querySelector('.bubble-audio');
                 if (audioBtn && !ai_text) {
                     audioBtn.style.display = 'none';
@@ -672,7 +1045,6 @@ function handleMessage(msg) {
             break;
         }
         case 'stream_cancelled': {
-            // Interrupted — remove placeholder if empty
             if (currentAiBubble) {
                 const textEl = currentAiBubble.querySelector('.bubble-text');
                 if (textEl && textEl.textContent === '...') {
@@ -686,23 +1058,20 @@ function handleMessage(msg) {
             break;
         }
         case 'stream_error': {
-            const message = msg.message || '处理出错，请重试';
-            // Remove placeholder AI bubble
+            const message = msg.message || t('processingError');
             if (currentAiBubble) {
                 const textEl = currentAiBubble.querySelector('.bubble-text');
                 if (textEl && textEl.textContent === '...') {
                     currentAiBubble.remove();
                 } else if (textEl) {
-                    // Keep partial text but mark error
-                    textEl.textContent += '\n\n[错误] ' + message;
+                    textEl.textContent += '\n\n[Error] ' + message;
                 }
                 currentAiBubble = null;
             }
             audioQueue = [];
             isPlayingQueue = false;
             stopActiveAudio();
-            // Show error bubble
-            addBubble('ai', '[错误] ' + message);
+            addBubble('ai', '[Error] ' + message);
             break;
         }
         case 'reply': {
@@ -714,18 +1083,17 @@ function handleMessage(msg) {
         }
         case 'scene_switched': {
             if (msg.status === 'ok') {
-                addBubble('info', `Switched to: ${msg.scene}`);
+                addBubble('info', t('switchedTo') + ': ' + msg.scene);
             } else {
-                addBubble('info', `Scene switch failed: ${msg.message}`);
+                addBubble('info', t('sceneSwitchFailed') + ': ' + msg.message);
             }
             break;
         }
         case 'error': {
-            addBubble('info', `Error: ${msg.message}`);
+            addBubble('info', 'Error: ' + msg.message);
             break;
         }
         case 'tts_audio': {
-            // Resolve pending TTS promise (practice flow)
             if (typeof ttsResolve === 'function') {
                 ttsResolve(msg.audio);
                 ttsResolve = null;
@@ -733,7 +1101,6 @@ function handleMessage(msg) {
             break;
         }
         case 'pronunciation_result': {
-            // Resolve pending evaluation promise; also render card
             if (typeof practiceResolve === 'function') {
                 practiceResolve(msg);
                 practiceResolve = null;
@@ -746,7 +1113,6 @@ function handleMessage(msg) {
             break;
         }
         case 'tracker_reset': {
-            // remove existing report panel if any
             const prevReport = document.getElementById('reportPanel');
             if (prevReport) prevReport.remove();
             break;
@@ -761,11 +1127,10 @@ function addBubble(role, text, metadata = {}) {
     const div = document.createElement('div');
     div.className = 'bubble ' + role;
 
-    // Store metadata as data attributes for practice flow
     div.dataset.text = text || '';
     if (metadata.audio) div.dataset.audio = metadata.audio;
 
-    const label = role === 'user' ? 'You' : (role === 'ai' ? 'Coach' : '');
+    const label = role === 'user' ? t('you') : (role === 'ai' ? t('coach') : '');
 
     if (role === 'user' || role === 'ai') {
         div.innerHTML =
@@ -773,13 +1138,11 @@ function addBubble(role, text, metadata = {}) {
             `<span class="bubble-text">${escapeHtml(text)}</span>` +
             `<button class="practice-btn" title="Practice pronunciation">&#127908;</button>`;
 
-        // Bind practice button
         div.querySelector('.practice-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             practiceFlow(div);
         });
     } else {
-        // Info bubble: no practice button
         div.innerHTML = (label ? `<div class="label">${label}</div>` : '') + escapeHtml(text);
     }
 
@@ -816,7 +1179,6 @@ function playAudio(base64Data) {
     };
 }
 
-/** Play next audio in the streaming queue sequentially. */
 function playNextInQueue() {
     if (audioQueue.length === 0) {
         isPlayingQueue = false;
@@ -844,7 +1206,6 @@ function playNextInQueue() {
     };
 }
 
-/** Play audio and return a promise that resolves when playback ends. */
 function playAudioPromise(base64Data) {
     return new Promise((resolve, reject) => {
         if (!base64Data) return reject(new Error('No audio data'));
@@ -862,7 +1223,6 @@ function playAudioPromise(base64Data) {
 
 // ===== Recording (main chat) =====
 async function startRecording() {
-    // 打断正在播放的 AI 音频
     stopActiveAudio();
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'barge_in' }));
@@ -892,7 +1252,7 @@ async function startRecording() {
         updateRecordUI();
     } catch (err) {
         console.error('Failed to start recording:', err);
-        addBubble('info', 'Microphone access denied or unavailable. Use text input instead.');
+        addBubble('info', t('micDenied'));
     }
 }
 
@@ -906,12 +1266,12 @@ function stopRecording() {
 
 function updateRecordUI() {
     if (isRecording) {
-        btnRecord.textContent = 'Recording...';
+        btnRecord.textContent = t('recordingLabel');
         btnRecord.classList.add('recording');
         btnStop.disabled = false;
         btnRecord.disabled = true;
     } else {
-        btnRecord.textContent = 'Start Recording';
+        btnRecord.textContent = t('startRecording');
         btnRecord.classList.remove('recording');
         btnStop.disabled = true;
         btnRecord.disabled = false;
@@ -927,7 +1287,7 @@ async function sendAudio(blob) {
                 ws.send(JSON.stringify({ type: 'audio', data: base64 }));
                 resolve();
             } else {
-                addBubble('info', 'WebSocket not connected. Cannot send audio.');
+                addBubble('info', t('wsNotConnected'));
                 reject(new Error('WS not connected'));
             }
         };
@@ -977,7 +1337,6 @@ async function practiceFlow(bubbleDiv) {
     const referenceText = bubbleDiv.dataset.text;
     if (!referenceText) return;
 
-    // Create overlay for status feedback, placed above the bubble
     const overlay = document.createElement('div');
     overlay.className = 'practice-overlay';
     if (bubbleDiv.classList.contains('user')) {
@@ -988,40 +1347,34 @@ async function practiceFlow(bubbleDiv) {
     bubbleDiv.insertAdjacentElement('beforebegin', overlay);
 
     try {
-        // --- Step 1: Play demo audio ---
-        overlay.textContent = 'Listen to the pronunciation...';
+        overlay.textContent = t('listenPron');
 
         if (bubbleDiv.classList.contains('ai') && bubbleDiv.dataset.audio) {
-            // AI message: use cached audio
             await playAudioPromise(bubbleDiv.dataset.audio);
         } else {
-            // User message or AI without cached audio: request TTS
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                throw new Error('WebSocket not connected');
+                throw new Error(t('wsNotConnectedPractice'));
             }
             ws.send(JSON.stringify({ type: 'synthesize_text', text: referenceText }));
             const audioBase64 = await new Promise((resolve, reject) => {
                 ttsResolve = resolve;
                 setTimeout(() => {
                     ttsResolve = null;
-                    reject(new Error('TTS timeout'));
+                    reject(new Error(t('ttsTimeout')));
                 }, 15000);
             });
             await playAudioPromise(audioBase64);
         }
 
-        // --- Step 2: Countdown ---
         for (let i = 3; i >= 1; i--) {
             overlay.textContent = `${i}...`;
             await sleep(1000);
         }
 
-        // --- Step 3: Record ---
-        overlay.textContent = 'Recording... Speak now!';
+        overlay.textContent = t('recordingSpeak');
         const audioBase64 = await recordPracticeAudio(5000);
 
-        // --- Step 4: Evaluate ---
-        overlay.textContent = 'Evaluating...';
+        overlay.textContent = t('evaluating');
         ws.send(JSON.stringify({
             type: 'practice_pronounce',
             reference_text: referenceText,
@@ -1032,19 +1385,16 @@ async function practiceFlow(bubbleDiv) {
             practiceResolve = resolve;
             setTimeout(() => {
                 practiceResolve = null;
-                reject(new Error('Evaluation timeout'));
+                reject(new Error(t('practiceTimeout')));
             }, 20000);
         });
 
-        // --- Step 5: Done ---
         overlay.remove();
-        // renderEvalCard is called via handleMessage → pronunciation_result
-        // but we call it here as well in case the card needs the bubble ref
         renderEvalCardForBubble(bubbleDiv, result);
 
     } catch (err) {
         console.error('Practice flow error:', err);
-        overlay.textContent = err.message || 'Practice failed';
+        overlay.textContent = err.message || t('practiceFailed');
         overlay.style.background = 'rgba(244,67,54,0.85)';
         setTimeout(() => overlay.remove(), 2500);
     }
@@ -1074,12 +1424,12 @@ function buildEvalCardHTML(result) {
         <div class="eval-score" style="color:${color}">${overall_score}<span>/100</span></div>
         <div class="eval-metrics">
             <div class="eval-metric">
-                <span>Accuracy</span>
+                <span>${t('accuracy')}</span>
                 <div class="eval-bar"><div class="eval-bar-fill" style="width:${accuracy}%;background:${scoreColor(accuracy)}"></div></div>
                 <span>${accuracy}</span>
             </div>
             <div class="eval-metric">
-                <span>Fluency</span>
+                <span>${t('fluency')}</span>
                 <div class="eval-bar"><div class="eval-bar-fill" style="width:${fluency}%;background:${scoreColor(fluency)}"></div></div>
                 <span>${fluency}</span>
             </div>
@@ -1088,9 +1438,7 @@ function buildEvalCardHTML(result) {
     `;
 }
 
-/** Render eval card below the given bubble (called from practiceFlow). */
 function renderEvalCardForBubble(bubbleDiv, result) {
-    // Remove any existing eval card right after this bubble
     const next = bubbleDiv.nextElementSibling;
     if (next && next.classList.contains('eval-card')) {
         next.remove();
@@ -1108,12 +1456,10 @@ function renderEvalCardForBubble(bubbleDiv, result) {
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-/** Render eval card by matching reference_text (called from handleMessage fallback). */
 function renderEvalCard(result) {
     const refText = result.reference_text;
     if (!refText) return;
 
-    // Find the last bubble with matching text
     const bubbles = chatArea.querySelectorAll('.bubble.user, .bubble.ai');
     let target = null;
     for (let i = bubbles.length - 1; i >= 0; i--) {
@@ -1122,7 +1468,7 @@ function renderEvalCard(result) {
             break;
         }
     }
-    if (!target) return; // no matching bubble found
+    if (!target) return;
     renderEvalCardForBubble(target, result);
 }
 
@@ -1131,7 +1477,7 @@ function sendText() {
     const text = textInput.value.trim();
     if (!text) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        addBubble('info', 'WebSocket not connected. Cannot send message.');
+        addBubble('info', t('wsNotConnected'));
         return;
     }
     ws.send(JSON.stringify({ type: 'text', content: text }));
@@ -1147,12 +1493,32 @@ async function loadScenes() {
         (data.scenes || []).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
-            opt.textContent = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            opt.setAttribute('data-scene-key', name);
+            const i18nName = I18N[currentLang] && I18N[currentLang][name]
+                ? I18N[currentLang][name]
+                : name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            opt.textContent = i18nName;
             sceneSelect.appendChild(opt);
         });
+        // Set default scene to free_talk
+        if ((data.scenes || []).includes('free_talk')) {
+            sceneSelect.value = 'free_talk';
+        }
+        if ((data.scenes || []).length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.setAttribute('data-scene-key', 'noScenes');
+            opt.textContent = t('noScenes');
+            sceneSelect.appendChild(opt);
+        }
     } catch (e) {
         console.error('Failed to load scenes:', e);
-        sceneSelect.innerHTML = '<option value="">Failed to load</option>';
+        sceneSelect.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.setAttribute('data-scene-key', 'failedToLoad');
+        opt.textContent = t('failedToLoad');
+        sceneSelect.appendChild(opt);
     }
 }
 
@@ -1194,15 +1560,14 @@ sceneSelect.addEventListener('change', () => {
 // ===== Report =====
 function requestReport() {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        addBubble('info', 'WebSocket not connected. Cannot generate report.');
+        addBubble('info', t('wsNotConnectedReport'));
         return;
     }
     ws.send(JSON.stringify({ type: 'generate_report' }));
-    addBubble('info', 'Generating report...');
+    addBubble('info', t('generatingReport'));
 }
 
 function renderReport(data) {
-    // Remove existing report panel
     const prevReport = document.getElementById('reportPanel');
     if (prevReport) prevReport.remove();
 
@@ -1210,55 +1575,51 @@ function renderReport(data) {
     panel.className = 'report-panel';
     panel.id = 'reportPanel';
 
-    // Title area
     const sceneName = (data.scene_name || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const durationMin = Math.round((data.duration_seconds || 0) / 60);
     const os = data.overall_score || 0;
     const sc = scoreColor(os);
 
     let html = `
-        <h2>Session Report</h2>
-        <div class="report-subtitle">${sceneName}  |  ${data.dialogue_count || 0} turns  |  ${durationMin} min  |  ${data.generated_by === 'ai' ? 'AI Enhanced' : 'Local Stats'}</div>
+        <h2>${t('reportTitle')}</h2>
+        <div class="report-subtitle">${sceneName}  |  ${data.dialogue_count || 0} ${t('turns')}  |  ${durationMin} ${t('min')}  |  ${data.generated_by === 'ai' ? t('aiEnhanced') : t('localStats')}</div>
         <div class="report-score-big">
             <div class="big-num" style="color:${sc}">${os}</div>
-            <div class="big-label">Overall Score</div>
+            <div class="big-label">${t('overallScore')}</div>
         </div>
     `;
 
-    // Metrics row
     const grammar = data.grammar || {};
     const pronunciation = data.pronunciation || {};
     html += `
         <div class="report-metrics">
             <div class="report-metric-item">
                 <div class="metric-value" style="color:${scoreColor(grammar.total_errors === 0 ? 100 : Math.max(20, 100 - grammar.total_errors * 5))}">${grammar.total_errors ?? 0}</div>
-                <div class="metric-label">Grammar Errors</div>
+                <div class="metric-label">${t('grammarErrors')}</div>
             </div>
             <div class="report-metric-item">
                 <div class="metric-value" style="color:${scoreColor(pronunciation.avg_score || 0)}">${pronunciation.avg_score ?? '-'}</div>
-                <div class="metric-label">Pronunciation Avg</div>
+                <div class="metric-label">${t('pronunciationAvg')}</div>
             </div>
             <div class="report-metric-item">
                 <div class="metric-value" style="color:${scoreColor(pronunciation.avg_fluency || 0)}">${pronunciation.avg_fluency ?? '-'}</div>
-                <div class="metric-label">Fluency</div>
+                <div class="metric-label">${t('fluency')}</div>
             </div>
             <div class="report-metric-item">
                 <div class="metric-value" style="color:${scoreColor(pronunciation.avg_accuracy || 0)}">${pronunciation.avg_accuracy ?? '-'}</div>
-                <div class="metric-label">Accuracy</div>
+                <div class="metric-label">${t('accuracy')}</div>
             </div>
         </div>
     `;
 
-    // Summary
     if (data.summary) {
-        html += `<div class="report-section"><h3>Summary</h3><p>${escapeHtml(data.summary)}</p></div>`;
+        html += `<div class="report-section"><h3>${t('summary')}</h3><p>${escapeHtml(data.summary)}</p></div>`;
     }
 
-    // Strengths & Weaknesses
     const strengths = data.strengths || [];
     const weaknesses = data.weaknesses || [];
     if (strengths.length || weaknesses.length) {
-        html += '<div class="report-section"><h3>Assessment</h3>';
+        html += `<div class="report-section"><h3>${t('assessment')}</h3>`;
         if (strengths.length) {
             html += '<div class="report-tags">' + strengths.map(s => `<span class="report-tag strength">${escapeHtml(s)}</span>`).join('') + '</div>';
         }
@@ -1268,33 +1629,28 @@ function renderReport(data) {
         html += '</div>';
     }
 
-    // Grammar detail
     if (grammar.summary) {
-        html += `<div class="report-section"><h3>Grammar</h3><p>${escapeHtml(grammar.summary)}</p></div>`;
+        html += `<div class="report-section"><h3>${t('grammar')}</h3><p>${escapeHtml(grammar.summary)}</p></div>`;
     }
 
-    // Pronunciation detail
     if (pronunciation.summary) {
-        html += `<div class="report-section"><h3>Pronunciation</h3><p>${escapeHtml(pronunciation.summary)}</p></div>`;
+        html += `<div class="report-section"><h3>${t('pronunciation')}</h3><p>${escapeHtml(pronunciation.summary)}</p></div>`;
     }
 
-    // Vocabulary tip
     if (data.vocabulary_tip) {
-        html += `<div class="report-section"><h3>Vocabulary Tip</h3><p>${escapeHtml(data.vocabulary_tip)}</p></div>`;
+        html += `<div class="report-section"><h3>${t('vocabularyTip')}</h3><p>${escapeHtml(data.vocabulary_tip)}</p></div>`;
     }
 
-    // Suggestions
     const suggestions = data.practice_suggestions || [];
     if (suggestions.length) {
-        html += '<div class="report-section"><h3>Practice Suggestions</h3><div class="report-tags">' +
+        html += '<div class="report-section"><h3>' + t('practiceSuggestions') + '</h3><div class="report-tags">' +
             suggestions.map(s => `<span class="report-tag suggestion">${escapeHtml(s)}</span>`).join('') +
             '</div></div>';
     }
 
-    // Detailed errors
     const detailed = data.detailed_errors || [];
     if (detailed.length) {
-        html += '<div class="report-section"><h3>Error Details</h3><div class="report-errors">';
+        html += '<div class="report-section"><h3>' + t('errorDetails') + '</h3><div class="report-errors">';
         for (const rec of detailed) {
             if (rec.errors && rec.errors.length) {
                 for (const err of rec.errors) {
@@ -1309,15 +1665,65 @@ function renderReport(data) {
         html += '</div></div>';
     }
 
-    // Close button
-    html += '<button class="report-close" onclick="document.getElementById(\'reportPanel\').remove()">Close Report</button>';
+    html += `<button class="report-close" onclick="document.getElementById('reportPanel').remove()">${t('closeReport')}</button>`;
 
     panel.innerHTML = html;
     chatArea.appendChild(panel);
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
+// ===== Settings Panel Event Listeners =====
+settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleSettingsPanel();
+});
+
+// Click outside to close
+document.addEventListener('click', (e) => {
+    if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) {
+        closeSettingsPanel();
+    }
+});
+
+// Theme buttons
+document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const theme = btn.getAttribute('data-theme-value');
+        applyTheme(theme);
+    });
+});
+
+// Language buttons
+document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const lang = btn.getAttribute('data-lang-value');
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyLanguage(lang);
+        // Update stop button text (i18n key is stopRecording)
+        if (!isRecording) {
+            btnStop.textContent = t('stopRecording');
+        }
+    });
+});
+
 // ===== Init =====
+// Load preferences
+(function initPreferences() {
+    const savedTheme = localStorage.getItem('ai-coach-theme') || 'dark';
+    applyTheme(savedTheme);
+
+    const savedLang = localStorage.getItem('ai-coach-lang') || 'en';
+    currentLang = savedLang;
+    document.title = t('title');
+    // Set language button active state
+    document.querySelectorAll('.lang-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-lang-value') === savedLang);
+    });
+    // Apply language to static elements
+    applyLanguage(savedLang);
+})();
+
 loadScenes();
 connectWS();
 
