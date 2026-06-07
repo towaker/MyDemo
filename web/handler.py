@@ -241,6 +241,25 @@ class MessageHandler:
             self._cleanup_temp(tmp_wav_path)
 
     # ------------------------------------------------------------------ #
+    #  翻译
+    # ------------------------------------------------------------------ #
+
+    async def translate_text(self, text: str) -> dict:
+        """翻译英文文本为中文。
+
+        调用 CoachEngine.translate_text，不写入对话历史。
+
+        Args:
+            text: 待翻译的英文文本。
+
+        Returns:
+            dict: {"original": text, "translation": result}
+        """
+        result = await self.engine.translate_text(text)
+        logger.info("翻译完成，原文长度=%d，译文长度=%d", len(text), len(result))
+        return {"original": text, "translation": result}
+
+    # ------------------------------------------------------------------ #
     #  音频处理核心流水线
     # ------------------------------------------------------------------ #
 

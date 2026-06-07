@@ -45,8 +45,12 @@ class SceneManager:
         return self._current
 
     def list_scenes(self) -> list[str]:
-        """返回所有可用场景名称列表。"""
-        return sorted(self._scenes.keys())
+        """返回所有可用场景名称列表，free_talk 固定排在第一位。"""
+        scenes = sorted(self._scenes.keys())
+        if "free_talk" in scenes:
+            scenes.remove("free_talk")
+            scenes.insert(0, "free_talk")
+        return scenes
 
     def get_scene(self, name: str) -> Optional[Scene]:
         """根据名称获取场景对象。"""
