@@ -1035,6 +1035,10 @@ function handleMessage(msg) {
                 if (textEl && ai_text) {
                     textEl.textContent = ai_text;
                 }
+                // 同步更新 dataset.text，确保跟读功能能获取到正确的参考文本
+                if (ai_text) {
+                    currentAiBubble.dataset.text = ai_text;
+                }
                 const audioBtn = currentAiBubble.querySelector('.bubble-audio');
                 if (audioBtn && !ai_text) {
                     audioBtn.style.display = 'none';
@@ -1332,6 +1336,11 @@ async function recordPracticeAudio(durationMs = 5000) {
     });
 }
 
+function calculatePracticeDuration(text) {
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(5000, wordCount * 500 + 3000);
+}
+
 // ===== Practice Flow =====
 async function practiceFlow(bubbleDiv) {
     const referenceText = bubbleDiv.dataset.text;
@@ -1372,7 +1381,7 @@ async function practiceFlow(bubbleDiv) {
         }
 
         overlay.textContent = t('recordingSpeak');
-        const audioBase64 = await recordPracticeAudio(5000);
+        const audioBase64 = await recordPracticeAudio(calculatePracticeDuration(referenceText));
 
         overlay.textContent = t('evaluating');
         ws.send(JSON.stringify({

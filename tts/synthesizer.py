@@ -9,6 +9,8 @@ TTS 语音合成模块 — 基于 edge-tts 的文本转语音。
 
 import asyncio
 import logging
+import re
+import unicodedata
 from typing import AsyncGenerator
 
 import edge_tts
@@ -16,6 +18,9 @@ import edge_tts
 from config import config
 
 logger = logging.getLogger(__name__)
+
+# edge-tts 可能无法正确处理的控制字符
+_TTS_UNSAFE_PATTERN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
 
 class Synthesizer:
@@ -62,24 +67,32 @@ class Synthesizer:
             ConnectionError: 网络不可用或 edge-tts 服务不可达时抛出。
             RuntimeError: 合成过程失败时抛出。
         """
-        if not text or not text.strip():
+        # 文本清理：移除控制字符、规范化 Unicode
+        cleaned = self._sanitize_text(text)
+
+        if not cleaned or not cleaned.strip():
             raise ValueError("合成文本不能为空")
 
-        logger.info("开始合成语音，文本长度=%d，输出路径=%s", len(text), output_path)
+        logger.info("开始合成语音，文本长度=%d，输出路径=%s", len(cleaned), output_path)
 
         try:
             communicate = edge_tts.Communicate(
-                text=text.strip(),
+                text=cleaned,
                 voice=self.voice,
                 rate=self.rate,
                 pitch=self.pitch,
             )
             await communicate.save(output_path)
         except edge_tts.exceptions.NoAudioReceived as exc:
-            raise RuntimeError("edge-tts 未返回音频数据，请检查语音角色是否有效") from exc
+            raise RuntimeError(
+                "edge-tts 未返回音频数据，请检查语音角色是否有效"
+            ) from exc
         except Exception as exc:
             error_msg = str(exc).lower()
-            if any(kw in error_msg for kw in ["connect", "dns", "resolve", "timeout", "network"]):
+            if any(
+                kw in error_msg
+                for kw in ["connect", "dns", "resolve", "timeout", "network"]
+            ):
                 raise ConnectionError(
                     f"无法连接 edge-tts 服务，请检查网络连接: {exc}"
                 ) from exc
@@ -87,6 +100,43 @@ class Synthesizer:
 
         logger.info("语音合成完成: %s", output_path)
         return output_path
+
+    @staticmethod
+    def _sanitize_text(text: str) -> str:
+        """清理文本中可能导致 edge-tts 合成失败的特殊字符。
+
+        处理策略：
+        1. 移除 ASCII 控制字符（U+0000-U+001F，保留 \\t \\n \\r）
+        2. 移除 Unicode 不可见字符（U+007F-U+009F）
+        3. Unicode 规范化（NFC），将全角/组合字符转为标准形式
+        4. 若清理后仅剩空白/标点（无可朗读内容），返回空字符串
+
+        Args:
+            text: 原始文本。
+
+        Returns:
+            清理后的安全文本。
+        """
+        if not text:
+            return ""
+
+        # Step 1: Unicode NFC 规范化（统一组合字符、全角转半角等）
+        text = unicodedata.normalize("NFC", text)
+
+        # Step 2: 移除控制字符（保留 \\n, \\r, \\t 作为韵律边界）
+        text = _TTS_UNSAFE_PATTERN.sub(" ", text)
+
+        # Step 3: 将连续的空白合并为单个空格
+        text = re.sub(r"\s+", " ", text)
+
+        cleaned = text.strip()
+
+        # Step 4: 检查是否只剩标点/符号（无可朗读内容）
+        if cleaned and re.match(r"^[\s\W_]+$", cleaned):
+            logger.warning("清理后文本仅含标点/符号，无可朗读内容: %r", cleaned[:50])
+            return ""
+
+        return cleaned
 
     async def synthesize_stream(self, text: str) -> AsyncGenerator[bytes, None]:
         """流式合成语音，逐块 yield 音频数据。
@@ -107,11 +157,15 @@ class Synthesizer:
         if not text or not text.strip():
             raise ValueError("合成文本不能为空")
 
-        logger.info("开始流式合成语音，文本长度=%d", len(text))
+        cleaned = self._sanitize_text(text)
+        if not cleaned:
+            raise ValueError("合成文本不能为空")
+
+        logger.info("开始流式合成语音，文本长度=%d", len(cleaned))
 
         try:
             communicate = edge_tts.Communicate(
-                text=text.strip(),
+                text=cleaned,
                 voice=self.voice,
                 rate=self.rate,
                 pitch=self.pitch,
