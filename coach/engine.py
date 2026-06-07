@@ -156,3 +156,33 @@ class CoachEngine:
                 await asyncio.sleep(self.RETRY_DELAY_BASE * (2 ** (attempt - 1)))
                 # 重试时重置已收集的片段
                 full_reply = ""
+
+    async def translate_text(self, text: str) -> str:
+        """将英文文本翻译为简体中文。
+
+        构造一次性 messages，不写入 _history，不调用 build_messages。
+
+        Args:
+            text: 待翻译的英文文本。
+
+        Returns:
+            中文翻译字符串。
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a translator. Translate the following English text "
+                    "to Simplified Chinese. Return ONLY the Chinese translation, "
+                    "nothing else."
+                ),
+            },
+            {"role": "user", "content": text},
+        ]
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=256,
+        )
+        return response.choices[0].message.content or ""

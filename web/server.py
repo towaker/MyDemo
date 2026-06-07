@@ -341,6 +341,13 @@ async def websocket_endpoint(ws: WebSocket):
                     "status": "ok",
                 })
 
+            # --- 翻译 ---
+            elif msg_type == "translate_text":
+                text = msg.get("text", "").strip()
+                if text:
+                    result = await handler.translate_text(text)
+                    await ws.send_json({"type": "translate_result", **result})
+
             # --- 未知类型 ---
             else:
                 await ws.send_json({

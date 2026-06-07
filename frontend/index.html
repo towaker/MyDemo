@@ -218,7 +218,7 @@ body {
 .bubble {
     position: relative;
     max-width: 80%;
-    padding: 12px 40px 12px 16px; /* right padding for practice button */
+    padding: 12px 76px 12px 16px; /* right padding for translate + practice button */
     border-radius: var(--radius);
     font-size: 0.95rem;
     line-height: 1.5;
@@ -285,6 +285,30 @@ body {
     transform: scale(1.1);
 }
 
+/* ===== Translate Button ===== */
+.translate-btn {
+    position: absolute;
+    top: 8px;
+    right: 42px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.translate-btn:hover {
+    background: var(--accent);
+}
+
 /* ===== Practice Overlay ===== */
 .practice-overlay {
     background: rgba(233,69,96,0.88);
@@ -302,6 +326,17 @@ body {
 }
 .practice-overlay.bubble-user-overlay { align-self: flex-end; }
 .practice-overlay.bubble-ai-overlay { align-self: flex-start; }
+
+/* ===== Translation Result ===== */
+.translation-result {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-style: italic;
+    animation: fadeIn 0.3s ease;
+}
 
 /* ===== Evaluation Card ===== */
 .eval-card {
@@ -746,6 +781,7 @@ const I18N = {
         localStats: 'Local Stats',
         turns: 'turns',
         min: 'min',
+        translate: 'Translate',
     },
     zh: {
         title: 'AI 英语口语陪练',
@@ -816,6 +852,7 @@ const I18N = {
         localStats: '本地统计',
         turns: '轮',
         min: '分钟',
+        translate: '翻译',
     }
 };
 
@@ -838,6 +875,11 @@ function applyLanguage(lang) {
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (key) el.placeholder = t(key);
+    });
+    // Update all data-i18n-title attributes
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (key) el.title = t(key);
     });
     // Update scene select options
     refreshSceneOptions();
@@ -1140,7 +1182,13 @@ function addBubble(role, text, metadata = {}) {
         div.innerHTML =
             (label ? `<div class="label">${label}</div>` : '') +
             `<span class="bubble-text">${escapeHtml(text)}</span>` +
+            `<button class="translate-btn" data-i18n-title="translate" title="${t('translate')}">\u8BD1</button>` +
             `<button class="practice-btn" title="Practice pronunciation">&#127908;</button>`;
+
+        div.querySelector('.translate-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            translateBubble(div);
+        });
 
         div.querySelector('.practice-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1153,6 +1201,49 @@ function addBubble(role, text, metadata = {}) {
     chatArea.appendChild(div);
     chatArea.scrollTop = chatArea.scrollHeight;
     return div;
+}
+
+// ===== Translation =====
+async function translateBubble(bubbleDiv) {
+    const text = bubbleDiv.dataset.text;
+    if (!text || text === '...') return;
+
+    // 如果已经翻译过，忽略
+    if (bubbleDiv.querySelector('.translation-result')) return;
+
+    const btn = bubbleDiv.querySelector('.translate-btn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    try {
+        ws.send(JSON.stringify({ type: 'translate_text', text: text }));
+
+        const result = await new Promise((resolve, reject) => {
+            const handler = (msg) => {
+                if (msg.type === 'translate_result') {
+                    ws.removeEventListener('message', wrapper);
+                    resolve(msg);
+                }
+            };
+            const wrapper = (event) => handler(JSON.parse(event.data));
+            ws.addEventListener('message', wrapper);
+            setTimeout(() => {
+                ws.removeEventListener('message', wrapper);
+                reject(new Error('Translation timeout'));
+            }, 15000);
+        });
+
+        // 在气泡下方插入翻译结果
+        const transDiv = document.createElement('div');
+        transDiv.className = 'translation-result';
+        transDiv.textContent = result.translation;
+        bubbleDiv.appendChild(transDiv);
+    } catch (err) {
+        console.error('Translation failed:', err);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '\u8BD1'; // 译
+    }
 }
 
 // ===== Audio Playback =====
